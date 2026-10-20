@@ -5,4 +5,5 @@ preview/
 *.pptx
 *.pdf
 *.png
+!assets/*.png
 .DS_Store
