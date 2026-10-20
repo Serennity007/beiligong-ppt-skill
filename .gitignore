@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+_build/
+preview/
+*.pptx
+*.pdf
+*.png
+.DS_Store
