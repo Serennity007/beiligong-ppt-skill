@@ -12,6 +12,8 @@
  },
  "logo": {
   "on": true,
+  "_image说明": "给了 image 就用这张外部图片（换学院只改这一行，见 assets/README.md）；留 null 则从 source_slide 那页深拷贝原图",
+  "image": "assets/logo_示例_人工智能学院.png",
   "source_slide": 1,
   "source_name": null,
   "h": 0.56,

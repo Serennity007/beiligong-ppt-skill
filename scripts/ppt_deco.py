@@ -17,6 +17,7 @@ deco_config.json 关键字段（详见 ../case/deco_config.json）：
 import argparse
 import copy
 import json
+import os
 import sys
 from collections import Counter
 
@@ -116,28 +117,45 @@ if band.get("on"):
 # ============ 模块 2：右上角院标 ============
 lg = cfg.get("logo") or {}
 if lg.get("on"):
-    src_idx = int(lg.get("source_slide", 1))
-    src_slide = slides[src_idx - 1]
-    tpl, img_part = None, None
-    want = lg.get("source_name")
-    for sh in src_slide.shapes:
-        if sh.shape_type == MSO_SHAPE_TYPE.PICTURE:
-            if want and sh.name != want:
-                continue
-            tpl = copy.deepcopy(sh._element)
-            blip = sh._element.blipFill.find(qn("a:blip"))
-            img_part = src_slide.part.related_part(blip.get(qn("r:embed")))
-            break
-    if tpl is None:
-        raise SystemExit("源页未找到院标图片")
-    if tpl.find(qn("p:spPr")).find(qn("a:srcRect")) is not None:
-        print("警告：源图带 srcRect（可能被裁过），投影仍是缺角，请换一张未裁剪的源图")
-
     H = float(lg.get("h", 0.56))
-    ratio = lg.get("ratio")  # 宽/高；不给就从模板读
-    if not ratio:
-        ext = tpl.find(qn("p:spPr")).find(qn("a:xfrm")).find(qn("a:ext"))
-        ratio = int(ext.get("cx")) / int(ext.get("cy"))
+
+    # 院标来源二选一：
+    #   A. logo.image 给了路径 —— 直接用这张外部图片（换学院时只改这里）
+    #   B. 没给 —— 从 source_slide 那页深拷贝原图（原图必须未裁剪，否则投影缺角）
+    img_path = lg.get("image")
+    if img_path:
+        if not os.path.exists(img_path):
+            raise SystemExit("院标图片不存在：" + img_path)
+        ratio = lg.get("ratio")
+        if not ratio:
+            try:
+                from PIL import Image
+                with Image.open(img_path) as im:
+                    ratio = im.width / im.height
+            except Exception:
+                ratio = 1.3745
+                print("提示：未装 Pillow 且未给 ratio，按 1.3745 估算宽高比")
+    else:
+        src_idx = int(lg.get("source_slide", 1))
+        src_slide = slides[src_idx - 1]
+        tpl, img_part = None, None
+        want = lg.get("source_name")
+        for sh in src_slide.shapes:
+            if sh.shape_type == MSO_SHAPE_TYPE.PICTURE:
+                if want and sh.name != want:
+                    continue
+                tpl = copy.deepcopy(sh._element)
+                blip = sh._element.blipFill.find(qn("a:blip"))
+                img_part = src_slide.part.related_part(blip.get(qn("r:embed")))
+                break
+        if tpl is None:
+            raise SystemExit("源页未找到院标图片")
+        if tpl.find(qn("p:spPr")).find(qn("a:srcRect")) is not None:
+            print("警告：源图带 srcRect（可能被裁过），投影仍是缺角，请换一张未裁剪的源图")
+        ratio = lg.get("ratio")
+        if not ratio:
+            ext = tpl.find(qn("p:spPr")).find(qn("a:xfrm")).find(qn("a:ext"))
+            ratio = int(ext.get("cx")) / int(ext.get("cy"))
     W = H * float(ratio)
     L = 13.333 - float(lg.get("right", 0.38)) - W
     bh = float(lg.get("band_h", 0.73))
@@ -156,6 +174,11 @@ if lg.get("on"):
                         and g["w"] < m.get("w_max", 2.5) and g["h"] < m.get("h_max", 1.0)):
                     K.remove_element(sh)
                     log.append({"page": idx, "what": "删旧院标", "name": sh.name})
+        if img_path:
+            pic = sl.shapes.add_picture(img_path, px(L), px(T), px(W), px(H))
+            pic.name = lg.get("name", "v59b:logo")
+            log.append({"page": idx, "what": "加院标(外部图)", "size": "%.2fx%.2f" % (W, H)})
+            return
         el = copy.deepcopy(tpl)
         blip = el.blipFill.find(qn("a:blip"))
         rid = sl.part.relate_to(img_part, RT.IMAGE)

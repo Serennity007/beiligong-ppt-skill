@@ -74,3 +74,4 @@ C:/Users/ztl/.workbuddy/binaries/python/envs/default/Scripts/python.exe scripts/
 - `case/enlarge_config.json` —— 字号放大曲线与颜色映射
 - `case/title_override.json` —— 统摄标题改写表（教师口径）
 - `case/*.py` —— 本次交付实际跑过的原始脚本（路径写死版），作对照参考
+- `assets/README.md` —— **换院标**：把学院 LOGO 放进 `assets/`，改 `deco_config.json` 的 `logo.image` 一行即可

@@ -17,6 +17,9 @@ ppt制作/
 │   ├── 常见坑.md            # 8 个踩过的坑
 │   ├── 案例_01_改造指导书_教师录音纠偏.md
 │   └── 案例_02_改造记录_逐轮.md
+├── assets/
+│   ├── README.md                # 院标替换说明（换学院只改一行配置）
+│   └── logo_示例_人工智能学院.png # 样图：367×267 透明底 PNG
 ├── scripts/
 │   ├── pptkit.py            # 公共工具（遍历 / 取色 / 亮度 / 中文字体）
 │   ├── ppt_scan.py          # 全量形状扫描
@@ -59,6 +62,15 @@ $PY scripts/ppt_verify.py  交付.pptx --fit _build/fit.json
 ```
 
 完整流程与每一步为什么这么做，见 [workflow/工作流.md](workflow/工作流.md)。
+
+## 换成你自己学院的院标
+
+右上角院标是**可替换件**：
+
+1. 把未裁剪、透明底的学院 LOGO 放进 `assets/`（样图 `logo_示例_人工智能学院.png` 是 367×267 透明底 PNG）
+2. 改 `case/deco_config.json` 一行：`"image": "assets/logo_你的学院.png"`
+
+尺寸、边距、跳过哪些页都在同一个 `logo` 段里调，详见 [assets/README.md](assets/README.md)。
 
 ## 三条红线
 
