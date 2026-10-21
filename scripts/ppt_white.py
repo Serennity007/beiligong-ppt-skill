@@ -138,6 +138,33 @@ for i, sl in enumerate(prs.slides, 1):
                                 "from": c, "to": target, "text": r.text[:30]})
                 K.set_ea_font(r, cfg.get("font", K.FONT_DEFAULT))
 
+# ---------- 2.5 清编辑定位信息与导读（教师硬要求：B4/B5/F1） ----------
+purge = cfg.get("purge") or {}
+if purge.get("on"):
+    import re as _re
+    pats = [_re.compile(p) for p in purge.get("patterns", [])]
+    keep = set(purge.get("keep_pages", []))
+    n_purge = 0
+    for i, sl in enumerate(prs.slides, 1):
+        if i in keep:
+            continue
+        for sh in list(sl.shapes):
+            if not getattr(sh, "has_text_frame", False):
+                continue
+            txt = K.text_of(sh)
+            if not txt.strip():
+                continue
+            for pat in pats:
+                if pat.search(txt):
+                    # 这类框都是独立的导读/页段框，整框删掉
+                    K.remove_element(sh)
+                    n_purge += 1
+                    stat["删导读/页段"] += 1
+                    log.append({"page": i, "what": "删导读或定位信息",
+                                "text": txt.strip()[:40], "hit": pat.pattern[:20]})
+                    break
+    print("删导读/页段/定位信息:", n_purge, "个框")
+
 # ---------- 3. 写统摄标题 / 页内小标题（可选） ----------
 if a.titles:
     from pptx.enum.shapes import MSO_SHAPE_TYPE as MST

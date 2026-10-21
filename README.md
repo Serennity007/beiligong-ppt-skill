@@ -14,7 +14,8 @@ ppt制作/
 ├── references/
 │   ├── 规范_版式与配色.md    # 白底深字的硬性规范、色号映射、院标规格
 │   ├── 规范_字号与可读性.md  # 放大曲线、实测回退算法、越框修复阶梯
-│   ├── 常见坑.md            # 8 个踩过的坑
+│   ├── 教师要求清单.md      # 教师录音点名的问题 → 编号化验收标准（A/B/C/D/E/F/G）
+│   ├── 常见坑.md            # 9 个踩过的坑
 │   ├── 案例_01_改造指导书_教师录音纠偏.md
 │   └── 案例_02_改造记录_逐轮.md
 ├── assets/
@@ -30,7 +31,8 @@ ppt制作/
 │   ├── ppt_enlarge.py       # 字号分级放大（出映射表）
 │   ├── ppt_fit.py           # PowerPoint 实测越框并回退（Windows）
 │   ├── ppt_apply.py         # 实测字号写回
-│   ├── ppt_verify.py        # 交付前体检
+│   ├── ppt_audit.py         # 按《教师要求清单》逐条验收（11 项自动判 + 人工核对清单）
+│   ├── ppt_verify.py        # 技术体检（浅底白字/残留浅底/页数/越框）
 │   ├── ppt_export.py        # 导出 PDF / PNG（Windows）
 │   └── ppt_shots.py         # PDF 转缩略图（跨平台）
 └── case/
@@ -58,8 +60,17 @@ $PY scripts/ppt_deco.py  _build/v白底.pptx _build/v装饰.pptx --config case/d
 $PY scripts/ppt_enlarge.py _build/v装饰.pptx _build/v放大.pptx --map _build/size_map.json --config case/enlarge_config.json
 $PY scripts/ppt_fit.py     _build/v放大.pptx --map _build/size_map.json --out _build/fit.json
 $PY scripts/ppt_apply.py   _build/v放大.pptx --fit _build/fit.json --out 交付.pptx
-$PY scripts/ppt_verify.py  交付.pptx --fit _build/fit.json
+$PY scripts/ppt_audit.py   交付.pptx --fit _build/fit.json --md _build/audit.md   # 按教师要求验收
 ```
+
+### 教师要求已做成验收环节
+
+教师录音里点名的问题全部编号化写进 [references/教师要求清单.md](references/教师要求清单.md)
+（停止旧做法 / 目录与总图 / 标题分层 / 案例三件套 / 白底深字与院标 / 版面可读性 / 交付八问），
+并由 `ppt_audit.py` 自动判 11 项，判不了的作为人工核对清单列在报告末尾。
+有 FAIL 就退出码 1，不允许带着 FAIL 交付。
+
+本次 186 页课件：改造**前** FAIL 5 / WARN 4，改造**后** FAIL 0 / WARN 2。
 
 完整流程与每一步为什么这么做，见 [workflow/工作流.md](workflow/工作流.md)。
 
