@@ -116,7 +116,20 @@ for i, sl in enumerate(prs.slides, 1):
             continue
         # 字所在"底"：自身填充优先，否则页面背景
         base = (bg if removed else (fill or bg))
-        light_bg = K.luminance(base) > TH
+        if fill is None and sh._element.getparent() is sl.shapes._spTree:
+            # 仅检查文字之前的顶层形状：后面的形状不可能是文字背后的色带。
+            cx, cy = g["l"] + g["w"] / 2, g["t"] + g["h"] / 2
+            for behind in sl.shapes:
+                if behind._element is sh._element:
+                    break
+                gb = K.geo(behind)
+                if gb["l"] <= cx <= gb["l"] + gb["w"] and gb["t"] <= cy <= gb["t"] + gb["h"]:
+                    color = K.fill_hex(behind)
+                    if color:
+                        base = color
+                    elif behind.shape_type == 13:  # 图片底色不可静态判定
+                        base = None
+        light_bg = base is not None and K.luminance(base) > TH
 
         for p in sh.text_frame.paragraphs:
             for r in p.runs:
@@ -142,7 +155,7 @@ for i, sl in enumerate(prs.slides, 1):
 purge = cfg.get("purge") or {}
 if purge.get("on"):
     import re as _re
-    pats = [_re.compile(p) for p in purge.get("patterns", [])]
+    pats = [_re.compile("(?:" + p + r")(?:\s*[：:].*)?") for p in purge.get("patterns", [])]
     keep = set(purge.get("keep_pages", []))
     n_purge = 0
     for i, sl in enumerate(prs.slides, 1):
@@ -154,15 +167,17 @@ if purge.get("on"):
             txt = K.text_of(sh)
             if not txt.strip():
                 continue
-            for pat in pats:
-                if pat.search(txt):
-                    # 这类框都是独立的导读/页段框，整框删掉
-                    K.remove_element(sh)
+            for para in list(sh.text_frame.paragraphs):
+                matched = next((pat for pat in pats if pat.fullmatch(para.text.strip())), None)
+                if matched:
+                    # 只删独立定位/备注段落，保留同框正文及其格式。
+                    para._p.getparent().remove(para._p)
                     n_purge += 1
                     stat["删导读/页段"] += 1
                     log.append({"page": i, "what": "删导读或定位信息",
-                                "text": txt.strip()[:40], "hit": pat.pattern[:20]})
-                    break
+                                "text": para.text.strip()[:40], "hit": matched.pattern[:20]})
+            if not K.text_of(sh).strip():
+                K.remove_element(sh)
     print("删导读/页段/定位信息:", n_purge, "个框")
 
 # ---------- 3. 写统摄标题 / 页内小标题（可选） ----------

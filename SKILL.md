@@ -1,10 +1,10 @@
 ---
-name: ppt制作
-display_name_zh: PPT制作
-display_name_en: PPT Production
-description: "党校/政务/企业授课课件的批量改造与可读性优化：白底深字、标题分层（统摄标题+页内小标题）、目录重排、小标题色带、右上角完整院标、全篇字号分级放大与逐框实测回退、颜色加深、越框与配色体检、PDF/PNG 导出核验。适用于已有 pptx 的成体系改版，尤其是教师或领导反馈'字太小看不清''底太花''标题每页都不一样''院标缺半截'之后的整改。触发词：PPT改造、课件整改、白底深字、标题分层、字号放大、字体调大、院标、越框检查、批量改PPT。"
-description_en: "Batch rework and readability optimization for lecture decks: white background with dark text, two-tier titles, TOC restyle, subtitle color bands, complete institution logo, graded font enlargement with per-box measured rollback, color deepening, overflow and contrast audit, PDF/PNG export verification."
-version: v20261021
+name: beiligong-ppt-skill
+description: "按教师反馈批量改造已有 PPTX：白底深字、统摄标题与页内小标题、目录与总图、完整院标、字号放大与 PowerPoint 实测回退、自动审计及人工视觉验收。适用于课件整改和投影可读性优化。"
+metadata:
+  display_name_zh: PPT制作
+  display_name_en: PPT Production
+  version: "2026-10-21"
 ---
 
 # PPT制作 Skill
@@ -27,8 +27,7 @@ version: v20261021
 | 版式与配色硬性规范 | [references/规范_版式与配色.md](references/规范_版式与配色.md) |
 | 字号与可读性规范（放大多少、怎么回退） | [references/规范_字号与可读性.md](references/规范_字号与可读性.md) |
 | 踩过的坑（文件被占用写坏、COM 误判等） | [references/常见坑.md](references/常见坑.md) |
-| 真实案例一：教师录音改造指导书 | [references/案例_01_改造指导书_教师录音纠偏.md](references/案例_01_改造指导书_教师录音纠偏.md) |
-| 真实案例二：逐轮改造记录 | [references/案例_02_改造记录_逐轮.md](references/案例_02_改造记录_逐轮.md) |
+| 教师录音改造指导书（原始依据） | [references/案例_01_改造指导书_教师录音纠偏.md](references/案例_01_改造指导书_教师录音纠偏.md) |
 
 ## 教师要求（硬约束，改造前先读）
 
@@ -45,7 +44,7 @@ version: v20261021
 改造完用 `ppt_audit.py` 逐条过一遍；脚本判不了的（总图画对没、讲述顺序、口语化标题、连线压字）
 会作为人工核对项列在报告末尾。
 
-## 七步工作流（一句话版）
+## 工作流（第 0–7 步）
 
 0. **读要求**：翻《教师要求清单》，确认哪些是硬约束、哪些本轮要解决
 1. **扫描**：`ppt_scan.py` / `ppt_chrome.py` 摸清版式骨架与节点标签
@@ -53,21 +52,22 @@ version: v20261021
 3. **白底深字**：`ppt_white.py`（`--titles` 写统摄标题；配置里的 `purge` 顺手删导读与页段）
 4. **装饰件**：`ppt_deco.py` 目录重排 + 小标题色带 + 右上角完整院标
 5. **放大字号**：`ppt_enlarge.py` → `ppt_fit.py`（PowerPoint 实测）→ `ppt_apply.py`（写回）
-6. **验收交付**：`ppt_audit.py` 按教师要求体检 → `ppt_verify.py` → `ppt_export.py` / `ppt_shots.py`
+6. **技术核验与导出**：`ppt_verify.py` → `ppt_export.py` / `ppt_shots.py`
+7. **教师要求验收**：`ppt_audit.py` → 处理 FAIL、逐项复核 WARN → 人工核对清单与逐页目检
 
 ## 四条不可违反的规则
 
-1. **交付前必须过《教师要求清单》**：目录与总图、标题分层、案例三件套、白底深字、完整院标、无编辑定位信息——`ppt_audit.py` 能自动判的必须全 PASS，判不了的逐条人工勾。
+1. **交付前必须过《教师要求清单》**：目录与总图、标题分层、案例三件套、白底深字、完整院标、无编辑定位信息——自动检查必须无 FAIL，WARN 须逐项复核并记录理由；判不了的逐条人工勾。
 2. **放大字号必须实测回退**：先放大，再调 PowerPoint 逐框测墨迹，放不下的按档回退，且**任何字号不得低于放大前原值**。禁止凭感觉一把放大。
 3. **改底色必须同步改字色**：去掉绿底的同时必须把白字改成深色，否则出现"看不见的字"。
-4. **写文件前确认未被占用**：pptx 被预览器/微信/Office 打开时写入会整体损坏（页序错乱、丢页）。每轮改前先备份底稿，改后立刻核验页数与页序。
+4. **保留源文件，分版本写出**：先备份底稿，输出到不同路径，避免文件占用、并发写入和误覆盖；改后核验包完整性、页数与页序。
 
 ## 脚本清单
 
-全部脚本在 `scripts/`，用管理版 Python（已装 python-pptx / pywin32 / pymupdf）运行：
+全部脚本在 `scripts/`。使用当前环境中装有依赖的 Python；依赖见 `requirements.txt`，不要依赖历史 WorkBuddy 绝对路径。先切换到本 skill 根目录，再运行：
 
 ```
-C:/Users/ztl/.workbuddy/binaries/python/envs/default/Scripts/python.exe scripts/xxx.py --help
+python scripts/ppt_audit.py --help
 ```
 
 | 脚本 | 作用 | 依赖 |
@@ -81,7 +81,7 @@ C:/Users/ztl/.workbuddy/binaries/python/envs/default/Scripts/python.exe scripts/
 | `ppt_enlarge.py` | 字号分级放大 + 颜色加深 + 收紧行距，出映射表 | python-pptx |
 | `ppt_fit.py` | PowerPoint 实测越框并按档回退，出实测字号 | pywin32 + PowerPoint |
 | `ppt_apply.py` | 把实测结果写回 pptx | python-pptx |
-| `ppt_audit.py` | **按《教师要求清单》逐条验收**（11 项自动判 + 人工核对清单） | python-pptx |
+| `ppt_audit.py` | **按《教师要求清单》逐条验收**（静态检查 + 可选实测检查 + 人工核对清单） | python-pptx |
 | `ppt_verify.py` | 技术体检：浅底白字/残留浅底/页数/越框 | python-pptx |
 | `ppt_export.py` | 导出 PDF 与 PNG | pywin32 + PowerPoint |
 | `ppt_shots.py` | PDF 转 PNG 缩略图（跨平台） | pymupdf |
@@ -92,5 +92,18 @@ C:/Users/ztl/.workbuddy/binaries/python/envs/default/Scripts/python.exe scripts/
 - `case/deco_config.json` —— 色带/院标/目录的位置尺寸与条目
 - `case/enlarge_config.json` —— 字号放大曲线与颜色映射
 - `case/title_override.json` —— 统摄标题改写表（教师口径）
-- `case/*.py` —— 本次交付实际跑过的原始脚本（路径写死版），作对照参考
 - `assets/README.md` —— **换院标**：把学院 LOGO 放进 `assets/`，改 `deco_config.json` 的 `logo.image` 一行即可
+
+## 执行边界与验收证据
+
+- 先读本轮教师反馈和《教师要求清单》；用户最新要求优先。先做目录、总图、主题展开页和代表案例的小样，再按反馈扩展。
+- `case/deco_config.json` 的目录子题已置空，避免重新引入教师要求删除的解释小字。仍需按当前内容改目录标题、跳过页和位置。
+- 无 PowerPoint/pywin32 时可做扫描、改稿和静态审计，但必须在交付说明中写“未完成实测”，不能声称零越框或最终验收通过。
+- `ppt_audit.py` 返回 0 只表示没有自动 FAIL。WARN 须逐项解决或说明，人工核对项仍须完成；关键词和位置启发式不证明内容关系正确。
+- `--fit` 应来自当前成品对应的放大版；文字、版式、页序或字号再改后须重测。旧 fit 文件不证明新稿合格。脚本尚未校验 fit 与成品的指纹及完整覆盖。
+- 自动取色不能完整解析母版/主题继承、组合坐标、叠放顺序和位图；`ppt_verify.py` 是辅助检查，不是独立交付门禁。逐页渲染检查仍不可省。
+- 字号回退只允许回到原字号。到下限仍越框时，应删冗句、调框或拆页，禁止带着越框直接交付。
+
+案例配置须按当前课件调整，不能照搬页码、目录主题和院标。回归验证：`python -m unittest discover -s tests -v`。
+
+字号继承处理：可读取 run 和段落字号；主题/母版字号未解析时保留整个文字框，输出 WARN，列为人工/PowerPoint 待测项，禁止按默认 18pt 猜测原字号。清理定位信息仅删除完整匹配的独立段落，保留同框正文。

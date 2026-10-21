@@ -9,7 +9,7 @@
     python ppt_audit.py 成品.pptx [--json 报告.json] [--md 报告.md] [--fit fit_result.json]
           [--config audit_config.json]
 
-退出码：0 = 全部通过；1 = 有 FAIL（方便接 CI 或批处理）
+退出码：0 = 无 FAIL（不代表人工验收完成）；1 = 有 FAIL
 """
 import argparse
 import json
@@ -78,8 +78,10 @@ for i, sl in enumerate(prs.slides, 1):
                 nat = (w0 / h0) if h0 else None
             except Exception:
                 pass
-            rect = sh._element.find(qn("p:spPr"))
-            has_src = rect is not None and rect.find(qn("a:srcRect")) is not None
+            rect = sh._element.find(qn("p:blipFill"))
+            crop = rect.find(qn("a:srcRect")) if rect is not None else None
+            has_src = crop is not None and any(int(crop.get(edge, "0")) != 0
+                                               for edge in ("l", "t", "r", "b"))
             rec["pics"].append({"l": g["l"], "t": g["t"], "w": g["w"], "h": g["h"],
                                 "name": sh.name, "srcRect": has_src,
                                 "ratio": (g["w"] / g["h"]) if g["h"] else None,
@@ -133,13 +135,9 @@ bad, cards = [], 0
 for p in pages:
     for t in p["texts"]:
         if t["fill"] in DEFILL and t["geo"]["w"] >= 0.4 and t["geo"]["h"] >= 0.28:
-            # 浅色卡片本身允许（教师要去掉的是绿底/灰底配白字）；字是深色就放行
-            if any(r["color"] in LIGHT for r in t["runs"]):
-                bad.append({"page": p["page"], "text": t["text"][:30], "fill": t["fill"]})
-            else:
-                cards += 1
+            bad.append({"page": p["page"], "text": t["text"][:30], "fill": t["fill"]})
 add("E1b", "无浅色铺底", "FAIL" if bad else "PASS",
-    "浅底配白字 %d 处（另有 %d 个浅色卡片字为深色，允许）" % (len(bad), cards), bad)
+    "带文字的浅色铺底 %d 处；无文字底块、组合和位图另行目检" % len(bad), bad)
 
 # ---------- E2 深字（看背后压的是什么颜色） ----------
 bad = []
@@ -260,15 +258,19 @@ for p in pages:
         for r in t["runs"]:
             if r["pt"] and r["pt"] < cfg["min_body_pt"] and len(t["text"]) > 12:
                 bad.append({"page": p["page"], "pt": r["pt"], "text": r["text"][:24]})
-lv = "PASS" if len(bad) <= n * 0.1 else "WARN"
+lv = "FAIL" if bad else "PASS"
 add("F2", "正文字号不低于 %.0fpt" % cfg["min_body_pt"], lv, "小字 %d 处" % len(bad), bad)
 
 # ---------- F3 越框（可选） ----------
 if a.fit:
     fit = json.load(open(a.fit, encoding="utf-8"))
     over = [r for r in fit if r["over"] > a.tol]
-    add("F3", "无文字越框", "PASS" if not over else "WARN", "%d 框越框" % len(over),
+    add("F3", "无文字越框", "PASS" if not over else "FAIL", "%d 框越框" % len(over),
         [{"page": r["page"], "name": r["name"], "over": r["over"]} for r in over])
+    if not fit:
+        add("F3-data", "实测数据有效", "FAIL", "实测结果为空，不能作为越框通过的证据")
+else:
+    add("F3", "无文字越框", "WARN", "未提供 --fit，未执行实测检查；不能宣称零越框")
 
 # ---------- 输出 ----------
 fails = [r for r in results if r["level"] == "FAIL"]

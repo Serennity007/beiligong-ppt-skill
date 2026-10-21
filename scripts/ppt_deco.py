@@ -126,15 +126,9 @@ if lg.get("on"):
     if img_path:
         if not os.path.exists(img_path):
             raise SystemExit("院标图片不存在：" + img_path)
-        ratio = lg.get("ratio")
-        if not ratio:
-            try:
-                from PIL import Image
-                with Image.open(img_path) as im:
-                    ratio = im.width / im.height
-            except Exception:
-                ratio = 1.3745
-                print("提示：未装 Pillow 且未给 ratio，按 1.3745 估算宽高比")
+        from PIL import Image
+        with Image.open(img_path) as im:
+            ratio = im.width / im.height
     else:
         src_idx = int(lg.get("source_slide", 1))
         src_slide = slides[src_idx - 1]
@@ -150,14 +144,15 @@ if lg.get("on"):
                 break
         if tpl is None:
             raise SystemExit("源页未找到院标图片")
-        if tpl.find(qn("p:spPr")).find(qn("a:srcRect")) is not None:
-            print("警告：源图带 srcRect（可能被裁过），投影仍是缺角，请换一张未裁剪的源图")
-        ratio = lg.get("ratio")
-        if not ratio:
-            ext = tpl.find(qn("p:spPr")).find(qn("a:xfrm")).find(qn("a:ext"))
-            ratio = int(ext.get("cx")) / int(ext.get("cy"))
+        crop = tpl.blipFill.find(qn("a:srcRect"))
+        if crop is not None and any(int(crop.get(edge, "0")) != 0 for edge in ("l", "t", "r", "b")):
+            raise SystemExit("源院标已裁切，请提供完整原图 logo.image")
+        from PIL import Image
+        from io import BytesIO
+        with Image.open(BytesIO(img_part.blob)) as im:
+            ratio = im.width / im.height
     W = H * float(ratio)
-    L = 13.333 - float(lg.get("right", 0.38)) - W
+    L = prs.slide_width / K.IN - float(lg.get("right", 0.38)) - W
     bh = float(lg.get("band_h", 0.73))
     T = float(lg.get("top", 0.14)) + (bh - H) / 2
     m = lg.get("match", {})
@@ -264,8 +259,9 @@ if toc.get("on"):
         K.set_ea_font(r, FONT)
         add_text(sl, L.get("title_l", 5.32), y, 7.5, 0.42,
                  [(title, L.get("title_size", 20), True, toc.get("label_color", "173404"))])
-        add_text(sl, L.get("title_l", 5.32), y + 0.44, 7.6, 0.34,
-                 [(subs, L.get("sub_size", 12), False, "4A4A4A")])
+        if subs.strip():
+            add_text(sl, L.get("title_l", 5.32), y + 0.44, 7.6, 0.34,
+                     [(subs, L.get("sub_size", 12), False, "4A4A4A")])
         y += L.get("row_gap", 0.86)
     log.append({"page": p, "what": "目录重排-建", "rows": len(toc.get("rows", []))})
     print("目录页重排完成，条目:", len(toc.get("rows", [])))

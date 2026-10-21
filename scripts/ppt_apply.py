@@ -28,7 +28,9 @@ ap.add_argument("--deliver", default=None, help="写回后再覆盖到这个交�
 a = ap.parse_args()
 
 fit = json.load(open(a.fit, encoding="utf-8"))
-mp = {(r["page"], r["id"]): r["applied"] for r in fit}
+mp = {(r["page"], r["id"]): r for r in fit}
+if not fit or len(mp) != len(fit):
+    raise SystemExit("实测结果为空或包含重复形状，拒绝写回")
 
 prs = Presentation(a.src)
 hit = 0
@@ -38,21 +40,29 @@ for i, sl in enumerate(prs.slides, 1):
     for sh, _, _ in K.iter_shapes(sl.shapes, i):
         if not getattr(sh, "has_text_frame", False):
             continue
-        vals = mp.get((i, sh.shape_id))
-        if vals is None:
+        record = mp.get((i, sh.shape_id))
+        if record is None:
             continue
-        pi = 0
-        for p in sh.text_frame.paragraphs:
+        vals = record["applied"]
+        paras = sh.text_frame.paragraphs
+        indices = record.get("paragraphs", [idx for idx, p in enumerate(paras, 1)
+                                             if any(r.text.strip() for r in p.runs)])
+        if (len(indices) != len(vals) or len(set(indices)) != len(indices)
+                or any(not isinstance(idx, int) or idx < 1 or idx > len(paras) for idx in indices)
+                or any(v <= 0 for v in vals)):
+            raise SystemExit(f"P{i} {sh.name}: 段落与实测结果不匹配，拒绝写回")
+        for idx, v in zip(indices, vals):
+            p = paras[idx - 1]
             rs = [r for r in p.runs if r.text.strip()]
             if not rs:
-                continue
-            v = vals[pi] if pi < len(vals) else vals[-1]
-            pi += 1
+                raise SystemExit(f"P{i} {sh.name}: 实测段落已无文字，拒绝写回")
             for r in rs:
                 r.font.size = Pt(v)
                 sizes[v] += 1
         hit += 1
 
+if hit != len(fit):
+    raise SystemExit(f"仅匹配 {hit}/{len(fit)} 个形状，拒绝写回不完整结果")
 prs.save(a.out)
 print("写回形状:", hit, "/", len(fit))
 print("包内 sldId 数:", K.page_count_zip(a.out), "（与源一致才安全）")

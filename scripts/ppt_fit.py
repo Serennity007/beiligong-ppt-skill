@@ -31,8 +31,11 @@ ap.add_argument("--steps", default="1.0,0.94,0.88,0.82,0.76,0.70")
 a = ap.parse_args()
 
 STEPS = [float(x) for x in a.steps.split(",")]
-recs = json.load(open(a.map, encoding="utf-8"))
+with open(a.map, encoding="utf-8") as stream:
+    recs = json.load(stream)
 mp = {(r["page"], r["id"]): r for r in recs}
+if not recs or len(mp) != len(recs):
+    raise SystemExit("字号映射为空或存在重复形状，拒绝实测")
 
 try:
     import win32com.client
@@ -84,17 +87,21 @@ try:
             except Exception:
                 pcount = 0
             pnew, porig = rec["new"], rec["orig"]
-            use_par = (pcount == len(pnew) and pcount > 0)
+            indices = rec.get("paragraphs", list(range(1, len(pnew) + 1)))
+            use_par = (len(indices) == len(pnew) and len(set(indices)) == len(indices)
+                       and all(isinstance(idx, int) and 1 <= idx <= pcount for idx in indices))
+            if "paragraphs" not in rec:
+                use_par = use_par and pcount == len(pnew)
 
             def apply(k):
                 try:
                     if use_par:
-                        for i in range(1, pcount + 1):
-                            tr.Paragraphs.Item(i).Font.Size = round(pnew[i - 1] * k, 1)
+                        for idx, value, original in zip(indices, pnew, porig):
+                            tr.Paragraphs.Item(idx).Font.Size = max(original, round(value * k, 1))
                     else:
                         tr.Font.Size = round(max(pnew) * k, 1)
-                except Exception:
-                    pass
+                except Exception as exc:
+                    raise RuntimeError(f"P{page} shape {sid}: 无法应用实测字号") from exc
 
             def overflow():
                 try:
@@ -103,33 +110,40 @@ try:
                     sl, st = float(s.Left), float(s.Top)
                     sw, shg = float(s.Width), float(s.Height)
                     return max(sl - bl, st - bt, (bl + bw) - (sl + sw), (bt + bh) - (st + shg))
-                except Exception:
-                    return 0.0
+                except Exception as exc:
+                    raise RuntimeError(f"P{page} shape {sid}: 无法测量墨迹边界") from exc
 
-            kfloor = 1.0
-            for o, nn in zip(porig, pnew):
-                if o and nn:
-                    kfloor = min(kfloor, o / nn)
+            if not porig or len(porig) != len(pnew) or any(v <= 0 for v in porig + pnew):
+                raise ValueError(f"P{page} shape {sid}: 字号映射无效")
+            if not use_par:
+                raise RuntimeError(f"P{page} shape {sid}: COM 段落数与映射不一致，拒绝猜测")
+            # 每个段落都必须守住原字号，约束取最大值，不能取最小值。
+            kfloor = max(o / nn for o, nn in zip(porig, pnew))
             chosen, ov = kfloor, 0.0
-            for k in STEPS:
-                kk = max(k, kfloor)
+            candidates = sorted({max(k, kfloor) for k in STEPS} | {kfloor}, reverse=True)
+            for kk in candidates:
                 apply(kk)
                 ov = overflow()
                 chosen = kk
                 if ov <= a.tol:
                     break
             result.append({"page": page, "id": sid, "name": rec["name"],
+                           "paragraphs": indices,
                            "k": round(chosen, 3), "over": round(ov, 1),
-                           "new": pnew, "applied": [round(v * chosen, 1) for v in pnew]})
+                           "new": pnew, "applied": [max(o, round(v * chosen, 1)) for o, v in zip(porig, pnew)]})
         if n % 25 == 0:
             print("...page", n, len(result), flush=True)
+    if len(result) != len(mp):
+        raise RuntimeError(f"映射 {len(mp)} 个框，仅测得 {len(result)} 个；拒绝输出不完整实测结果")
     print("测量完成", len(result), flush=True)
 finally:
     if deck is not None:
+        deck.Saved = True  # 仅丢弃测量时的内存修改，禁止保存源文件
         deck.Close()
     app.Quit()
 
-json.dump(result, open(a.out, "w", encoding="utf-8"), ensure_ascii=False)
+with open(a.out, "w", encoding="utf-8") as stream:
+    json.dump(result, stream, ensure_ascii=False)
 print("回退档位分布:", dict(Counter(r["k"] for r in result)))
 bad = [r for r in result if r["over"] > a.tol]
 print("仍越框(已退回原字号仍放不下):", len(bad))

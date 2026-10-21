@@ -83,13 +83,22 @@ for i, sl in enumerate(prs.slides, 1):
             continue
         tf = sh.text_frame
         pinfo = []
-        for p in tf.paragraphs:
+        unresolved = False
+        for pidx, p in enumerate(tf.paragraphs, 1):
             rs = [r for r in p.runs if r.text.strip()]
             if not rs:
                 continue
-            cur = [(r.font.size.pt if r.font.size else None) for r in rs]
-            base = max([c for c in cur if c] or [float(cfg["default_pt"])])
-            pinfo.append({"runs": rs, "orig": base, "new": bump(base)})
+            cur = [r.font.size.pt if r.font.size else
+                   (p.font.size.pt if p.font.size else None) for r in rs]
+            if any(c is None for c in cur):
+                unresolved = True
+                break
+            base = max(cur)
+            pinfo.append({"runs": rs, "orig": base, "new": max(base, bump(base)), "index": pidx})
+        if unresolved:
+            print(f"WARN P{i} {sh.name}: 字号来自主题/母版等未解析继承，保留原框字号，需人工或 PowerPoint 实测")
+            stat["未解析字号，保留原框"] += 1
+            continue
         if not pinfo:
             continue
         stat["文字形状"] += 1
@@ -119,6 +128,7 @@ for i, sl in enumerate(prs.slides, 1):
                     except Exception:
                         pass
         mapping.append({"page": i, "id": sh.shape_id, "name": sh.name,
+                        "paragraphs": [pi["index"] for pi in pinfo],
                         "orig": [pi["orig"] for pi in pinfo],
                         "new": [pi["new"] for pi in pinfo]})
 
