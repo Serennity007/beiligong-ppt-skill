@@ -26,6 +26,10 @@ ap.add_argument("--txt", default=None, help="同时写一份人类可读的 txt"
 ap.add_argument("--slide-h", type=float, default=7.5, help="页面高度（英寸），用于判定底部区")
 ap.add_argument("--tag", default="nodeTag", help="节点标签形状名包含的串")
 a = ap.parse_args()
+try:
+    K.check_output_paths({'src': a.src}, {'out': a.out, 'txt': a.txt})
+except (ValueError, OSError) as exc:
+    ap.error(str(exc))
 
 # 版式判定阈值（13.333 x 7.5 的 16:9；其他尺寸按比例缩放）
 SCALE = a.slide_h / 7.5

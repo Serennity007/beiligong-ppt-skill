@@ -5,6 +5,7 @@
 """
 import json
 import os
+from pathlib import Path
 
 from pptx import Presentation
 from pptx.dml.color import RGBColor
@@ -15,6 +16,25 @@ from pptx.util import Emu
 
 IN = 914400.0          # 1 英寸 = 914400 EMU
 FONT_DEFAULT = "微软雅黑"
+
+
+def check_output_paths(inputs, outputs):
+    """Reject input/output aliases before scripts read or write any artifacts."""
+    source = {key: Path(value).expanduser().resolve() for key, value in inputs.items() if value}
+    targets = {key: Path(value).expanduser().resolve() for key, value in outputs.items() if value}
+
+    def same(left, right):
+        return left == right or (left.exists() and right.exists() and os.path.samefile(left, right))
+
+    previous = {}
+    for name, target in targets.items():
+        for input_name, path in source.items():
+            if same(path, target):
+                raise ValueError(f"输出 {name} 与输入 {input_name} 指向同一文件，请改用其他路径")
+        for output_name, path in previous.items():
+            if same(path, target):
+                raise ValueError(f"输出 {name} 与输出 {output_name} 指向同一文件，请分别指定路径")
+        previous[name] = target
 
 
 # ---------------- 基础遍历 ----------------

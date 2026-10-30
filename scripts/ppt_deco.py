@@ -37,6 +37,10 @@ ap.add_argument("src")
 ap.add_argument("out")
 ap.add_argument("--config", required=True)
 a = ap.parse_args()
+try:
+    K.check_output_paths({'src': a.src, 'config': a.config}, {'out': a.out})
+except (ValueError, OSError) as exc:
+    ap.error(str(exc))
 
 cfg = K.load_config(a.config)
 FONT = cfg.get("font", K.FONT_DEFAULT)

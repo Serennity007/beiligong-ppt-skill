@@ -26,6 +26,10 @@ ap.add_argument("--fit", required=True)
 ap.add_argument("--out", required=True)
 ap.add_argument("--deliver", default=None, help="写回后再覆盖到这个交付文件")
 a = ap.parse_args()
+try:
+    K.check_output_paths({'src': a.src, 'fit': a.fit}, {'out': a.out, 'deliver': a.deliver})
+except (ValueError, OSError) as exc:
+    ap.error(str(exc))
 
 fit = json.load(open(a.fit, encoding="utf-8"))
 mp = {(r["page"], r["id"]): r for r in fit}

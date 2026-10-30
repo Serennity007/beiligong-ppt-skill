@@ -1,5 +1,7 @@
 # ppt制作
 
+[项目总导航](https://github.com/Serennity007/repo-catalog/blob/main/README.zh-CN.md) · [维护记录](CHANGELOG.md)
+
 一个面向**已有 PPTX 成体系改版**的 Skill / 工作流：把"字太小看不清、底太花、标题每页都不一样、院标缺半截"这类反馈，变成一条可复跑的流水线。
 
 沉淀自一次真实交付：某党校 186 页《智能体安全：技术趋势与风险防控》课件，按教师录音与现场反馈连改四轮，最终 181 页交付。教师指导书与要求保留在 `references/`，可复用的案例配置保留在 `case/`。
@@ -49,6 +51,8 @@ python -m pip install -r requirements.txt
 ```
 
 ## 最简跑法
+
+脚本会先检查路径：输出不能指向任何输入文件，多个输出也不能指向同一文件；冲突返回退出码 2，原文件保持不变。请为 PPTX、映射表、fit、日志和报告分别命名。`ppt_apply.py --deliver` 只用于独立的已有交付文件，不能指回 `src`、fit 或 `--out`。
 
 先切换到本仓库根目录并创建 `_build`、`preview`。以下案例配置必须按当前课件的主题、页码和院标调整。
 

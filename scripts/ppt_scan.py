@@ -7,6 +7,7 @@
 import argparse, json
 from pptx import Presentation
 from pptx.enum.shapes import MSO_SHAPE_TYPE
+import pptkit as K
 
 
 def inches(v):
@@ -73,6 +74,10 @@ def main():
     ap.add_argument("src")
     ap.add_argument("out")
     a = ap.parse_args()
+    try:
+        K.check_output_paths({'src': a.src}, {'out': a.out})
+    except (ValueError, OSError) as exc:
+        ap.error(str(exc))
     prs = Presentation(a.src)
     data = {"src": a.src,
             "slide_w": inches(prs.slide_width), "slide_h": inches(prs.slide_height),

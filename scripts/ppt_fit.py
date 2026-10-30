@@ -29,6 +29,10 @@ ap.add_argument("--out", required=True)
 ap.add_argument("--tol", type=float, default=3.0, help="允许溢出磅数")
 ap.add_argument("--steps", default="1.0,0.94,0.88,0.82,0.76,0.70")
 a = ap.parse_args()
+try:
+    K.check_output_paths({'src': a.src, 'map': a.map}, {'out': a.out})
+except (ValueError, OSError) as exc:
+    ap.error(str(exc))
 
 STEPS = [float(x) for x in a.steps.split(",")]
 with open(a.map, encoding="utf-8") as stream:

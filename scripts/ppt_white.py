@@ -32,6 +32,10 @@ ap.add_argument("--log", default=None)
 ap.add_argument("--titles", default=None,
                 help="ppt_titles.py 产出的方案 json，用于写入统摄标题 + 页内小标题")
 a = ap.parse_args()
+try:
+    K.check_output_paths({'src': a.src, 'config': a.config, 'titles': a.titles}, {'out': a.out, 'log': a.log})
+except (ValueError, OSError) as exc:
+    ap.error(str(exc))
 
 DEF = {
     "page_bg": "FFFFFF",

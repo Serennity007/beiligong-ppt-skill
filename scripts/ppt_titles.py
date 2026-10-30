@@ -30,6 +30,10 @@ ap.add_argument("--prefix", default="", help="统摄标题前缀，如 '智能�
 ap.add_argument("--tag", default="nodeTag",
                 help="节点标签形状名包含的串；找不到时自动退化为按页内标题分组")
 a = ap.parse_args()
+try:
+    K.check_output_paths({'chrome': a.chrome, 'override': a.override}, {'out': a.out, 'txt': a.txt})
+except (ValueError, OSError) as exc:
+    ap.error(str(exc))
 
 ov = {}
 SELF = set()

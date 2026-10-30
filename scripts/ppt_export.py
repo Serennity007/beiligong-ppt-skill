@@ -18,6 +18,10 @@ ap.add_argument("--png", default=None, help="PNG 输出目录")
 ap.add_argument("--png-pages", default=None, help="只导出这些页，如 1,2,3；不给则全导")
 ap.add_argument("--png-w", type=int, default=1600)
 a = ap.parse_args()
+try:
+    K.check_output_paths({'src': a.src}, {'pdf': a.pdf})
+except (ValueError, OSError) as exc:
+    ap.error(str(exc))
 
 try:
     import win32com.client

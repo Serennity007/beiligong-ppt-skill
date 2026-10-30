@@ -29,6 +29,10 @@ ap.add_argument("--fit", default=None)
 ap.add_argument("--tol", type=float, default=3.0)
 ap.add_argument("--json", default=None)
 a = ap.parse_args()
+try:
+    K.check_output_paths({'src': a.src, 'fit': a.fit}, {'json': a.json})
+except (ValueError, OSError) as exc:
+    ap.error(str(exc))
 
 DEFILL = set(x.strip().upper() for x in a.defill.split(",") if x.strip())
 LIGHT_TEXT = {"FFFFFF", "FFFEFE", "F5F5F5", "E8F5E9", "F2F2F2"}

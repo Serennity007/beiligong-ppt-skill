@@ -27,6 +27,10 @@ ap.add_argument("out")
 ap.add_argument("--map", required=True)
 ap.add_argument("--config", default=None)
 a = ap.parse_args()
+try:
+    K.check_output_paths({'src': a.src, 'config': a.config}, {'out': a.out, 'map': a.map})
+except (ValueError, OSError) as exc:
+    ap.error(str(exc))
 
 DEF = {
     # [字号上界(不含), 倍率, 放大后下限]

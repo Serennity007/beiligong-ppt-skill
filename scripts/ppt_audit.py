@@ -33,6 +33,10 @@ ap.add_argument("--fit", default=None, help="ppt_fit.py 的结果，用于查越
 ap.add_argument("--tol", type=float, default=3.0)
 ap.add_argument("--config", default=None)
 a = ap.parse_args()
+try:
+    K.check_output_paths({'src': a.src, 'fit': a.fit, 'config': a.config}, {'json': a.json, 'md': a.md})
+except (ValueError, OSError) as exc:
+    ap.error(str(exc))
 
 DEF = {
     "defill": ["E8F5E9", "F1F8F1", "EFF5EF", "F5F5F5", "FAFAFA"],
