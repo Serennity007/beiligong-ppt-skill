@@ -52,6 +52,17 @@ python -m pip install -r requirements.txt
 
 ## 最简跑法
 
+首次使用可先运行不需要 Office 的合成演示：
+
+```sh
+git clone https://github.com/Serennity007/beiligong-ppt-skill.git
+cd beiligong-ppt-skill
+python -m pip install "python-pptx>=1.0.2,<2"
+python examples/run_demo.py
+```
+
+成功时打印 `PASS` 和新的 `_build/demo-…` 目录，保留合成源 PPTX、放大后的 PPTX、`scan.json` 与 `size_map.json`。只验证扫描、字号映射和源文件保留；完整流程的 PowerPoint 实测、目视复核与交付验收仍须另做。演示不读取真实课件，每次使用独立输出目录。
+
 脚本会先检查路径：输出不能指向任何输入文件，多个输出也不能指向同一文件；冲突返回退出码 2，原文件保持不变。请为 PPTX、映射表、fit、日志和报告分别命名。`ppt_apply.py --deliver` 只用于独立的已有交付文件，不能指回 `src`、fit 或 `--out`。
 
 先切换到本仓库根目录并创建 `_build`、`preview`。以下案例配置必须按当前课件的主题、页码和院标调整。
